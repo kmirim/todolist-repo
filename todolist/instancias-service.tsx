@@ -17,14 +17,14 @@ export const TaskService = {
         .map((key: string) => `${key}=${filters[key]}`)
         .join("&")
         return baseService.get(
-            `${API}/api/task?page=${page}&size=${size}&sort=${sort},desc&${
+            `/api/task?page=${page}&size=${size}&sort=${sort},desc&${
                 queryParams ? `&${queryParams}` : ""
             }`
         )
     },
 
     create(request: Task): Promise<AxiosResponse<Task>> {
-        return baseService.post(`${API}/api/task`, request)
+        return baseService.post(`/api/task`, request)
     },
 }
 

@@ -19,19 +19,6 @@ import { TaskService } from "./instancias-service"
 import { BaseService } from "./service"
 import { AxiosError, AxiosResponse } from 'axios'
 
-/* furncao de manipulacao de formulario com formik
-** serve para:
-** - formikref: guardar uma referencia 
-** - formtosend: criar um objeto
-** - setSubmitting(false) encerra o esdado de submissao
-** - setData(...): limpa os dados
-** - chama outra funcao
-*/ 
-
-
-
-
-
 
 const statusColors = {
   pendente: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
@@ -45,27 +32,18 @@ const statusLabels = {
   concluida: "Concluída",
 }
 
-
-
 export default function TaskPanel() {
   const formikRef = useRef<FormikProps<Task>>(null)
   const [tasks, setTasks] = useState<Task[]>([])
   const [notificationData, setNotificationData] = useState<NotificationData | null>(null)
-
   const [loading, setLoading] = useState<boolean>(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    status: "pendente" as Task["status"],
-    deadline: "",
-  })
+  
   const resetNotification = () => {
     setTimeout(() => {
       setNotificationData(() => null)
     }, 6000)
   }
-
   const getNotificationClasses = (type: NotificationTypeEnum) => {
     switch (type) {
       case NotificationTypeEnum.SUCCESS:
@@ -80,7 +58,6 @@ export default function TaskPanel() {
         return 'bg-gray-100 border-gray-400 text-gray-700'
     }
   }
-
   const handleSubmit = (
     values: Task, 
     { setSubmitting, resetForm }: FormikHelpers<Task>
@@ -103,27 +80,41 @@ export default function TaskPanel() {
 
     }
     const handleCreatTask=(formToSend:Task)=>{
-      
+      console.log("🚀 Iniciando criação de tarefa:", formToSend)
       setLoading(true);
       
       TaskService.create(formToSend)
         .then((response:any) => {
-          console.log("Tarefa criada com sucesso. ID: ", response.data.id)
+          try {
+            console.log("✅ Tarefa criada com sucesso. Response completo:", response)
+            console.log("✅ Dados da tarefa criada:", response.data)
 
-          setTasks((prev) => [...prev, response.data])
-          setNotificationData({
-            text: 'Tarefa criada com sucesso!',
-            type: NotificationTypeEnum.SUCCESS,
-          })
-          resetNotification()
+            setTasks((prev) => [...prev, response.data])
+            setNotificationData({
+              text: 'Tarefa criada com sucesso!',
+              type: NotificationTypeEnum.SUCCESS,
+            })
+            resetNotification()
+            setIsModalOpen(false) // Fecha o modal após sucesso
+          } catch (error) {
+            console.log("❌ Erro interno após sucesso da API:", error)
+            setNotificationData({
+              text: 'Tarefa criada, mas houve um erro na interface!',
+              type: NotificationTypeEnum.WARNING,
+            })
+            resetNotification()
+          }
         })
         .catch((error:AxiosError | Error) => {
-          console.log("Error ao criar tarefa", error)
+          console.log("❌ Error ao criar tarefa:", error)
+          console.log("❌ Tipo do erro:", typeof error)
+          console.log("❌ Error completo:", JSON.stringify(error, null, 2))
 
           let errorMessage = "Erro ao criar tarefa"
 
           if(error && 'response' in error && error.response){
             const axiosError = error as AxiosError<{message ?: string}>
+            console.log("❌ Response do erro:", axiosError.response)
             errorMessage = axiosError.response?.data?.message || "Erro ao criar tarefa"
           }else if(error?.message){
             errorMessage = error.message
@@ -136,6 +127,7 @@ export default function TaskPanel() {
           resetNotification()
         })
         .finally(() => {
+          console.log("🏁 Finalizando criação de tarefa")
           setLoading(false)
         })
   }

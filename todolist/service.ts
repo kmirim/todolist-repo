@@ -1,28 +1,27 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { showLoading, hideLoading } from './components/ui/loading'
 
-const API = "http://localhost:8081/api"
-
 export class BaseService<T> {
-    private api = axios.create({
-        baseURL: API,
-        timeout: 100000,
-        headers: {
-            'content-type': 'application/json',
-        },
-        responseType: 'json',
-        withCredentials: true,
-        validateStatus: status => (status >= 200 && status < 300)
-    }) 
+    private api = axios.create()
+    
     constructor(baseURL: string) {
-        this.api = axios.create({baseURL})
+        this.api = axios.create({
+            baseURL,
+            timeout: 100000,
+            headers: {
+                'content-type': 'application/json',
+            },
+            responseType: 'json',
+            withCredentials: true,
+            validateStatus: status => (status >= 200 && status < 300)
+        })
 
         this.api.interceptors.request.use(
-            (config:InternalAxiosRequestConfig) => {
+            (config: InternalAxiosRequestConfig) => {
                 showLoading()
                 return config
             },
-            (error) =>{
+            (error) => {
                 hideLoading()
                 return Promise.reject(error)
             }
@@ -44,8 +43,9 @@ export class BaseService<T> {
     public post(path: string, data: T): Promise<AxiosResponse<T>> {
         return this.api.post<T>(path, data)
     }
+    
     public get(path: string): Promise<AxiosResponse<T>> {
-        return this.api.post<T>(path)
+        return this.api.get<T>(path)
     }
 
 }
