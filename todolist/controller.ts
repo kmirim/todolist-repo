@@ -7,15 +7,23 @@ export interface Task{
     status: "pendente" | "em-andamento" | "concluida"
     createdAt: null| Date
     deadline: null| Date
+    timeSpent?: number | any
 }
-
+export interface TimerState {
+  [taskId: string]: {
+    isRunning: boolean
+    startTime: number
+    elapsedTime: number
+  }
+}
 export const formInitialValues: Task = {
     id: '',
     title:'',
     description: '',
     status: "pendente", // comeca com pendente de ser feito
     createdAt: null,
-    deadline: null
+    deadline: null,
+    timeSpent: ''
 }
 
 export const validationSchema = Yup.object().shape({

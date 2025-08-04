@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, FormEventHandler } from "react"
+import { useState, useRef, FormEventHandler, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -11,13 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Trash2, Plus } from "lucide-react"
-import { Task, validationSchema, formInitialValues} from "@/controller"
+import { Task, validationSchema, formInitialValues,TimerState } from "@/controller"
 import { Field, FieldProps, Form, Formik, FormikHelpers, FormikProps } from 'formik'
-import {NotificationData, NotificationTypeEnum} from "@/interface/notificationData"
+import { NotificationData, NotificationTypeEnum } from "@/interface/notificationData"
 import { TaskService } from "./instancias-service"
 import { BaseService } from "./service"
 import { AxiosError, AxiosResponse } from 'axios'
+import { Trash2, Plus, Play, Pause, Square, Clock } from "lucide-react"
 
 
 const statusColors = {
@@ -34,16 +34,45 @@ const statusLabels = {
 
 export default function TaskPanel() {
   const formikRef = useRef<FormikProps<Task>>(null)
+
   const [tasks, setTasks] = useState<Task[]>([])
+  
   const [notificationData, setNotificationData] = useState<NotificationData | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
+
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [timers, setTimers] = useState<TimerState>({})
+  const [formData, setFormData] = useState({
+          title: "",
+          description: "",
+          status: "pendente" as Task["status"],
+          deadline: "",
+      })
+  
+
+  useEffect(() => {
+          const interval = setInterval(() => {
+              setTimers((prevTimers) => {
+                  const updatedTimers = { ...prevTimers }
+                  Object.keys(updatedTimers).forEach((taskId) => {
+                      if (updatedTimers[taskId].isRunning) {
+                          updatedTimers[taskId].elapsedTime =
+                              Date.now() - updatedTimers[taskId].startTime + (tasks.find((t) => t.id === taskId)?.timeSpent || 0) * 1000
+                      }
+                  })
+                  return updatedTimers
+              })
+          }, 1000)
+  
+          return () => clearInterval(interval)
+  }, [tasks])
   
   const resetNotification = () => {
     setTimeout(() => {
       setNotificationData(() => null)
     }, 6000)
   }
+
   const getNotificationClasses = (type: NotificationTypeEnum) => {
     switch (type) {
       case NotificationTypeEnum.SUCCESS:
@@ -59,14 +88,14 @@ export default function TaskPanel() {
     }
   }
   const handleSubmit = (
-    values: Task, 
+    values: Task,
     { setSubmitting, resetForm }: FormikHelpers<Task>
-    ) => {
+  ) => {
     console.log("Valores: ", values)
 
     const { current } = formikRef
     if (!current) return
-    current.setSubmitting(false) 
+    current.setSubmitting(false)
 
     /*Filtrando somente os preenchidos: */
     const formToSend = Object.entries(values).reduce((acc, [key, value]) => {
@@ -74,62 +103,64 @@ export default function TaskPanel() {
       return acc
     }, {} as Task)
 
+
+
     setSubmitting(false)
     resetForm()
-    handleCreatTask(formToSend);    
+    handleCreatTask(formToSend);
 
-    }
-    const handleCreatTask=(formToSend:Task)=>{
-      console.log("🚀 Iniciando criação de tarefa:", formToSend)
-      setLoading(true);
-      
-      TaskService.create(formToSend)
-        .then((response:any) => {
-          try {
-            console.log("✅ Tarefa criada com sucesso. Response completo:", response)
-            console.log("✅ Dados da tarefa criada:", response.data)
+  }
+  const handleCreatTask = (formToSend: Task) => {
+    console.log("🚀 Iniciando criação de tarefa:", formToSend)
+    setLoading(true);
 
-            setTasks((prev) => [...prev, response.data])
-            setNotificationData({
-              text: 'Tarefa criada com sucesso!',
-              type: NotificationTypeEnum.SUCCESS,
-            })
-            resetNotification()
-            setIsModalOpen(false) // Fecha o modal após sucesso
-          } catch (error) {
-            console.log("❌ Erro interno após sucesso da API:", error)
-            setNotificationData({
-              text: 'Tarefa criada, mas houve um erro na interface!',
-              type: NotificationTypeEnum.WARNING,
-            })
-            resetNotification()
-          }
-        })
-        .catch((error:AxiosError | Error) => {
-          console.log("❌ Error ao criar tarefa:", error)
-          console.log("❌ Tipo do erro:", typeof error)
-          console.log("❌ Error completo:", JSON.stringify(error, null, 2))
+    TaskService.create(formToSend)
+      .then((response: any) => {
+        try {
+          console.log("✅ Tarefa criada com sucesso. Response completo:", response)
+          console.log("✅ Dados da tarefa criada:", response.data)
 
-          let errorMessage = "Erro ao criar tarefa"
-
-          if(error && 'response' in error && error.response){
-            const axiosError = error as AxiosError<{message ?: string}>
-            console.log("❌ Response do erro:", axiosError.response)
-            errorMessage = axiosError.response?.data?.message || "Erro ao criar tarefa"
-          }else if(error?.message){
-            errorMessage = error.message
-          }
-
+          setTasks((prev) => [...prev, response.data])
           setNotificationData({
-            text: errorMessage,
-            type: NotificationTypeEnum.DANGER,
+            text: 'Tarefa criada com sucesso!',
+            type: NotificationTypeEnum.SUCCESS,
           })
           resetNotification()
+          setIsModalOpen(false) // Fecha o modal após sucesso
+        } catch (error) {
+          console.error("❌ Erro interno após sucesso da API:", error)
+          setNotificationData({
+            text: 'Tarefa criada, mas houve um erro na interface!',
+            type: NotificationTypeEnum.WARNING,
+          })
+          resetNotification()
+        }
+      })
+      .catch((error: AxiosError | Error) => {
+        console.error("❌ Error ao criar tarefa:", error)
+        console.error("❌ Tipo do erro:", typeof error)
+        console.error("❌ Error completo:", JSON.stringify(error, null, 2))
+
+        let errorMessage = "Erro ao criar tarefa"
+
+        if (error && 'response' in error && error.response) {
+          const axiosError = error as AxiosError<{ message?: string }>
+          console.error("❌ Response do erro:", axiosError.response)
+          errorMessage = axiosError.response?.data?.message || "Erro ao criar tarefa"
+        } else if (error?.message) {
+          errorMessage = error.message
+        }
+
+        setNotificationData({
+          text: errorMessage,
+          type: NotificationTypeEnum.DANGER,
         })
-        .finally(() => {
-          console.log("🏁 Finalizando criação de tarefa")
-          setLoading(false)
-        })
+        resetNotification()
+      })
+      .finally(() => {
+        console.log("🏁 Finalizando criação de tarefa")
+        setLoading(false)
+      })
   }
 
   const handleDelete = (taskId: string) => {
@@ -138,12 +169,75 @@ export default function TaskPanel() {
 
   const formatDate = (date: Date | null | string) => {
     if (!date) return "Data não informada";
-    
+
     const dateObj = typeof date === 'string' ? new Date(date) : date;
-    
+
     if (isNaN(dateObj.getTime())) return "Data inválida";
-    
+
     return dateObj.toLocaleDateString("pt-BR");
+  }
+  const handleStatusChange = (taskId: string, newStatus: Task["status"]) => {
+    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, status: newStatus } : task)))
+  }
+  const startTimer = (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId)
+    if (!task) return
+
+    setTimers((prev) => ({
+      ...prev,
+      [taskId]: {
+        isRunning: true,
+        startTime: Date.now(),
+        elapsedTime: (task.timeSpent || 0) * 1000,
+      },
+    }))
+  }
+  const pauseTimer = (taskId: string) => {
+    const timer = timers[taskId]
+    if (!timer) return
+
+    const totalElapsed = Math.floor(timer.elapsedTime / 1000)
+
+    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, timeSpent: totalElapsed } : task)))
+
+    setTimers((prev) => ({
+      ...prev,
+      [taskId]: {
+        ...prev[taskId],
+        isRunning: false,
+      },
+    }))
+  }
+
+  const resetTimer = (taskId: string) => {
+    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, timeSpent: 0 } : task)))
+
+    setTimers((prev) => {
+      const newTimers = { ...prev }
+      delete newTimers[taskId]
+      return newTimers
+    })
+  }
+
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+    }
+    return `${minutes}:${secs.toString().padStart(2, "0")}`
+  }
+  const getCurrentTime = (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId)
+    const timer = timers[taskId]
+
+    if (timer?.isRunning) {
+        return Math.floor(timer.elapsedTime / 1000)
+    }
+
+    return task?.timeSpent || 0
   }
 
   //TODO FUNCAO PARA CARREGAR TAREFAS JA EXISTENTES
@@ -177,7 +271,7 @@ export default function TaskPanel() {
               )}
               <span className="font-medium">{notificationData.text}</span>
             </div>
-            <button 
+            <button
               onClick={() => setNotificationData(null)}
               className="ml-4 text-lg font-bold hover:opacity-70 transition-opacity"
             >
@@ -186,7 +280,7 @@ export default function TaskPanel() {
           </div>
         </div>
       )}
-      
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Painel de Tarefas</h1>
@@ -206,41 +300,41 @@ export default function TaskPanel() {
             </DialogHeader>
 
             <Formik<Task>
-            innerRef={formikRef}
-            initialValues={formInitialValues}
-            onSubmit={handleSubmit}
-            validationSchema={validationSchema}
+              innerRef={formikRef}
+              initialValues={formInitialValues}
+              onSubmit={handleSubmit}
+              validationSchema={validationSchema}
             >
-              {({handleSubmit}) => (
+              {({ handleSubmit }) => (
                 <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Título *</Label>
-                  <Field 
-                    id="title" 
-                    name="title" 
-                    as={Input}
-                    placeholder="Digite o título da tarefa"
-                    required
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Título *</Label>
+                    <Field
+                      id="title"
+                      name="title"
+                      as={Input}
+                      placeholder="Digite o título da tarefa"
+                      required
                     />
-                </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <Field
-                    as={Textarea}
-                    id="description"
-                    name="description"
-                    placeholder="Descreva a tarefa"
-                    rows={3}
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Descrição</Label>
+                    <Field
+                      as={Textarea}
+                      id="description"
+                      name="description"
+                      placeholder="Descreva a tarefa"
+                      rows={3}
                     />
-                </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status</Label>
                     <Field name="status">
                       {({ field, form }: FieldProps) => (
-                        <Select 
-                          value={field.value} 
+                        <Select
+                          value={field.value}
                           onValueChange={(value) => form.setFieldValue(field.name, value)}
                         >
                           <SelectTrigger>
@@ -249,15 +343,14 @@ export default function TaskPanel() {
                           <SelectContent>
                             <SelectItem value="pendente">Pendente</SelectItem>
                             <SelectItem value="em-andamento">Em Andamento</SelectItem>
-                            <SelectItem value="concluida">Concluída</SelectItem>
                           </SelectContent>
                         </Select>
                       )}
                     </Field>
-                </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="deadline">Prazo *</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="deadline">Prazo *</Label>
                     <Field id="deadline" name="deadline">
                       {({ field, form }: FieldProps) => (
                         <div className="relative">
@@ -272,17 +365,17 @@ export default function TaskPanel() {
                         </div>
                       )}
                     </Field>
-                </div>
+                  </div>
 
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit">Criar Tarefa</Button>
-                </div>
-              </form>
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit">Criar Tarefa</Button>
+                  </div>
+                </form>
               )}
-              
+
             </Formik>
           </DialogContent>
         </Dialog>
@@ -315,6 +408,7 @@ export default function TaskPanel() {
                     <TableHead className="font-semibold">Status</TableHead>
                     <TableHead className="font-semibold">Data de Criação</TableHead>
                     <TableHead className="font-semibold">Prazo</TableHead>
+                    <TableHead className="font-semibold">Timer</TableHead>
                     <TableHead className="font-semibold w-20">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -328,7 +422,19 @@ export default function TaskPanel() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={statusColors[task.status]}>{statusLabels[task.status]}</Badge>
+                        <Select
+                          value={task.status}
+                          onValueChange={(value) => handleStatusChange(task.id, value as Task["status"])}
+                        >
+                          <SelectTrigger className="w-auto border-none p-0 h-auto">
+                            <Badge className={statusColors[task.status]}>{statusLabels[task.status]}</Badge>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pendente">Pendente</SelectItem>
+                            <SelectItem value="em-andamento">Em Andamento</SelectItem>
+                            <SelectItem value="concluida">Concluída</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>{formatDate(task.createdAt)}</TableCell>
                       <TableCell>
@@ -341,6 +447,43 @@ export default function TaskPanel() {
                         >
                           {formatDate(task.deadline)}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 min-w-[60px]">
+                            <Clock className="h-3 w-3 text-gray-500" />
+                            <span className="text-sm font-mono">{formatTime(getCurrentTime(task.id))}</span>
+                          </div>
+                          <div className="flex gap-1">
+                            {timers[task.id]?.isRunning ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => pauseTimer(task.id)}
+                                className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              >
+                                <Pause className="h-3 w-3" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => startTimer(task.id)}
+                                className="h-6 w-6 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              >
+                                <Play className="h-3 w-3" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => resetTimer(task.id)}
+                              className="h-6 w-6 p-0 text-gray-600 hover:text-gray-700 hover:bg-gray-50"
+                            >
+                              <Square className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Button
