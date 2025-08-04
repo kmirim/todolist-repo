@@ -6,7 +6,7 @@ export interface Task{
     description: string
     status: "pendente" | "em-andamento" | "concluida"
     createdAt: null| Date
-    deadline: null| Date
+    deadLine: null| Date
     timeSpent?: number | any
 }
 export interface TimerState {
@@ -22,7 +22,7 @@ export const formInitialValues: Task = {
     description: '',
     status: "pendente", // comeca com pendente de ser feito
     createdAt: null,
-    deadline: null,
+    deadLine: null,
     timeSpent: ''
 }
 

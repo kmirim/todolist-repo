@@ -16,8 +16,10 @@ import { Field, FieldProps, Form, Formik, FormikHelpers, FormikProps } from 'for
 import { NotificationData, NotificationTypeEnum } from "@/interface/notificationData"
 import { TaskService } from "./instancias-service"
 import { BaseService } from "./service"
-import { AxiosError, AxiosResponse } from 'axios'
-import { Trash2, Plus, Play, Pause, Square, Clock } from "lucide-react"
+import axios, { AxiosError, AxiosResponse } from 'axios'
+import { Trash2, Plus, Play, Pause, Square, Clock, CheckCircle } from "lucide-react"
+import { Description } from "@radix-ui/react-toast"
+import { headers } from "next/headers"
 
 
 const statusColors = {
@@ -42,13 +44,6 @@ export default function TaskPanel() {
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [timers, setTimers] = useState<TimerState>({})
-  const [formData, setFormData] = useState({
-          title: "",
-          description: "",
-          status: "pendente" as Task["status"],
-          deadline: "",
-      })
-  
 
   useEffect(() => {
           const interval = setInterval(() => {
@@ -79,10 +74,6 @@ export default function TaskPanel() {
         return 'bg-green-100 border-green-400 text-green-700'
       case NotificationTypeEnum.DANGER:
         return 'bg-red-100 border-red-400 text-red-700'
-      case NotificationTypeEnum.WARNING:
-        return 'bg-yellow-100 border-yellow-400 text-yellow-700'
-      case NotificationTypeEnum.INFO:
-        return 'bg-blue-100 border-blue-400 text-blue-700'
       default:
         return 'bg-gray-100 border-gray-400 text-gray-700'
     }
@@ -91,42 +82,42 @@ export default function TaskPanel() {
     values: Task,
     { setSubmitting, resetForm }: FormikHelpers<Task>
   ) => {
-    console.log("Valores: ", values)
-
     const { current } = formikRef
     if (!current) return
     current.setSubmitting(false)
 
-    /*Filtrando somente os preenchidos: */
-    const formToSend = Object.entries(values).reduce((acc, [key, value]) => {
-      if (value) acc[key as keyof Task] = value
-      return acc
-    }, {} as Task)
-
-
+    /*Enviar somente as infos que eu tenho*/
+    const formToSend = {
+      title: values.title,
+      description: values.description || undefined,
+      status: values.status,
+      deadLine: values.deadLine ? `${values.deadLine}T23:59:59` : undefined,
+    } as Partial<Task>;
+    /*Trima as undefined*/
+    Object.keys(formToSend).forEach(key => {
+      if (formToSend[key as keyof Task] === undefined) {
+        delete formToSend[key as keyof Task];
+      }
+    });
 
     setSubmitting(false)
     resetForm()
     handleCreatTask(formToSend);
 
   }
-  const handleCreatTask = (formToSend: Task) => {
-    console.log("🚀 Iniciando criação de tarefa:", formToSend)
+  const handleCreatTask = (formToSend: Partial<Task>) => {
     setLoading(true);
 
     TaskService.create(formToSend)
       .then((response: any) => {
         try {
-          console.log("✅ Tarefa criada com sucesso. Response completo:", response)
-          console.log("✅ Dados da tarefa criada:", response.data)
-
           setTasks((prev) => [...prev, response.data])
           setNotificationData({
             text: 'Tarefa criada com sucesso!',
             type: NotificationTypeEnum.SUCCESS,
           })
           resetNotification()
-          setIsModalOpen(false) // Fecha o modal após sucesso
+          setIsModalOpen(false)
         } catch (error) {
           console.error("❌ Erro interno após sucesso da API:", error)
           setNotificationData({
@@ -137,24 +128,29 @@ export default function TaskPanel() {
         }
       })
       .catch((error: AxiosError | Error) => {
-        console.error("❌ Error ao criar tarefa:", error)
-        console.error("❌ Tipo do erro:", typeof error)
-        console.error("❌ Error completo:", JSON.stringify(error, null, 2))
-
         let errorMessage = "Erro ao criar tarefa"
-
-        if (error && 'response' in error && error.response) {
-          const axiosError = error as AxiosError<{ message?: string }>
-          console.error("❌ Response do erro:", axiosError.response)
-          errorMessage = axiosError.response?.data?.message || "Erro ao criar tarefa"
-        } else if (error?.message) {
-          errorMessage = error.message
+        if (axios.isAxiosError(error)) {
+          console.error("❌ Response do erro:", {
+            status: error.response?.status,
+            data: error.response?.data,
+            headers: error.response?.headers,
+          });
+          if (error.response?.data && typeof error.response.data === 'object'){
+            const data = error.response.data as { message?: string };
+            if(data.message){
+              errorMessage = data.message;
+            }
+          }
+        }else{
+          console.error("Erro: ", error);
+          if(error.message){
+            errorMessage = error.message;
+          }
         }
-
         setNotificationData({
           text: errorMessage,
           type: NotificationTypeEnum.DANGER,
-        })
+        });
         resetNotification()
       })
       .finally(() => {
@@ -240,7 +236,8 @@ export default function TaskPanel() {
     return task?.timeSpent || 0
   }
 
-  //TODO FUNCAO PARA CARREGAR TAREFAS JA EXISTENTES
+  //TODO: FUNCAO PARA CARREGAR TAREFAS JA EXISTENTES
+  //TODO: API EXTERNA PARA INCLUIR BOTAO COM POMODORO
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
@@ -248,26 +245,11 @@ export default function TaskPanel() {
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm border-l-4 ${getNotificationClasses(notificationData.type)} animate-in slide-in-from-right-full duration-300`}>
           <div className="flex justify-between items-start">
             <div className="flex items-center">
-              {/* Ícone baseado no tipo */}
               {notificationData.type === NotificationTypeEnum.SUCCESS && (
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
+                <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
               )}
-              {notificationData.type === NotificationTypeEnum.DANGER && (
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              )}
-              {notificationData.type === NotificationTypeEnum.WARNING && (
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              )}
-              {notificationData.type === NotificationTypeEnum.INFO && (
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
+              {notificationData.type === NotificationTypeEnum.SUCCESS && (
+                <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
               )}
               <span className="font-medium">{notificationData.text}</span>
             </div>
@@ -350,13 +332,14 @@ export default function TaskPanel() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="deadline">Prazo *</Label>
-                    <Field id="deadline" name="deadline">
+                    <Label htmlFor="deadLine">Prazo *</Label>
+                    <Field id="deadLine" name="deadLine">
                       {({ field, form }: FieldProps) => (
                         <div className="relative">
                           <Input
-                            id="deadline"
-                            name="deadline"
+                            {...field}
+                            id="deadLine"
+                            name="deadLine"
                             type="date"
                             className="w-full"
                             min={new Date().toISOString().split('T')[0]}
@@ -440,12 +423,12 @@ export default function TaskPanel() {
                       <TableCell>
                         <span
                           className={
-                            task.deadline && new Date(task.deadline) < new Date() && task.status !== "concluida"
+                            task.deadLine && new Date(task.deadLine) < new Date() && task.status !== "concluida"
                               ? "text-red-600 font-medium"
                               : "text-gray-900"
                           }
                         >
-                          {formatDate(task.deadline)}
+                          {formatDate(task.deadLine)}
                         </span>
                       </TableCell>
                       <TableCell>

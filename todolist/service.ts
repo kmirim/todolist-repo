@@ -40,7 +40,7 @@ export class BaseService<T> {
         )
     }
     
-    public post(path: string, data: T): Promise<AxiosResponse<T>> {
+    public post(path: string, data: Partial<T>): Promise<AxiosResponse<T>> {
         return this.api.post<T>(path, data)
     }
     

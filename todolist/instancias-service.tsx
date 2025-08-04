@@ -23,7 +23,7 @@ export const TaskService = {
         )
     },
 
-    create(request: Task): Promise<AxiosResponse<Task>> {
+    create(request: Partial<Task>): Promise<AxiosResponse<Task>> {
         return baseService.post(`/api/task`, request)
     },
 }
