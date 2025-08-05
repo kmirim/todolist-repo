@@ -44,8 +44,16 @@ export class BaseService<T> {
         return this.api.post<T>(path, data)
     }
     
-    public get(path: string): Promise<AxiosResponse<T>> {
-        return this.api.get<T>(path)
+    public get(path: string, params?:AxiosRequestConfig): Promise<AxiosResponse<T>> {
+        return this.api.get<T>(path, { params })
+    }
+
+    public put(path: string, data: Partial<T>): Promise<AxiosResponse<T>>{
+        return this.api.put<T>(path, data)
+    }
+
+    public delete(path: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>>{
+        return this.api.delete<T>(path, config)
     }
 
 }

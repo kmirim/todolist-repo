@@ -11,14 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Task, validationSchema, formInitialValues,TimerState } from "@/controller"
-import { Field, FieldProps, Formik, FormikHelpers, FormikProps } from 'formik'
-import { NotificationData, NotificationTypeEnum, getNotificationClasses} from "@/interface/notificationData"
-import { TaskService } from "./instancias-service"
+import { Task, validationSchema, formInitialValues, TimerState } from "@/controller"
+import { ErrorMessage, Field, FieldProps, Formik, FormikHelpers, FormikProps } from 'formik'
+import { NotificationData, NotificationTypeEnum, getNotificationClasses } from "@/interface/notificationData"
+import { TaskResponse, TaskService } from "./instancias-service"
 import axios, { AxiosError, AxiosResponse } from 'axios'
 import { Trash2, Plus, Play, Pause, Square, Clock, CheckCircle } from "lucide-react"
 import { useTimer } from "./hooks/timer"
-import { TASK_STATUS_COLORS, TASK_STATUS_LABELS} from "./config/uiConfig"
+import { TASK_STATUS_COLORS, TASK_STATUS_LABELS } from "./config/uiConfig"
+import { responseCookiesToRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies"
+import { ApiError } from "next/dist/server/api-utils"
 
 
 export default function TaskPanel() {
@@ -27,14 +29,14 @@ export default function TaskPanel() {
   const [loading, setLoading] = useState<boolean>(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [notificationData, setNotificationData] = useState<NotificationData | null>(null)
-  
+
 
   const resetNotification = () => {
     setTimeout(() => {
-        setNotificationData(null)
+      setNotificationData(null)
     }, 6000)
   }
-  
+
   const handleSubmit = (
     values: Task,
     { setSubmitting, resetForm }: FormikHelpers<Task>
@@ -92,15 +94,15 @@ export default function TaskPanel() {
             data: error.response?.data,
             headers: error.response?.headers,
           });
-          if (error.response?.data && typeof error.response.data === 'object'){
+          if (error.response?.data && typeof error.response.data === 'object') {
             const data = error.response.data as { message?: string };
-            if(data.message){
+            if (data.message) {
               errorMessage = data.message;
             }
           }
-        }else{
+        } else {
           console.error("Erro: ", error);
-          if(error.message){
+          if (error.message) {
             errorMessage = error.message;
           }
         }
@@ -110,14 +112,44 @@ export default function TaskPanel() {
         });
         resetNotification()
       })
-      .finally(() => {
-        console.log("🏁 Finalizando criação de tarefa")
-        setLoading(false)
-      })
   }
 
-  const handleDelete = (taskId: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== taskId))
+  //TODO: botao de delete
+  const handleDelete = (id: string) => {
+    if (!id) {
+      return
+    }
+    setLoading(true)
+    TaskService.remove(id)
+      .then(() => {
+        setLoading(false)
+        setNotificationData(() => ({
+          text: 'Tarefa removida com sucesso!',
+          type: NotificationTypeEnum.SUCCESS,
+        }))
+        resetNotification()
+      })
+          .catch((error: unknown) => {
+      setLoading(false);
+
+      let errorMessage = 'Erro ao remover tarefa!';
+
+      if (error instanceof AxiosError) {
+        const apiError = error.response?.data?.apierror?.message;
+        if (apiError) {
+          errorMessage += `: ${apiError}`;
+        }
+      } else if (error instanceof Error) {
+        errorMessage += `: ${error.message}`;
+      }
+      console.error("valor do id ", id)
+      console.error("error -> ", ApiError)
+      setNotificationData(() => ({
+        text: errorMessage,
+        type: NotificationTypeEnum.DANGER,
+      }));
+      resetNotification();
+    });
   }
 
   const formatDate = (date: Date | null | string) => {
@@ -132,18 +164,58 @@ export default function TaskPanel() {
   const handleStatusChange = (taskId: string, newStatus: Task["status"]) => {
     setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, status: newStatus } : task)))
   }
-    const updateTaskTimeSpent = (taskId: string, timeSpent: number) => {
-    setTasks(prevTasks => 
-      prevTasks.map(task => 
-        task.id === taskId 
-          ? { ...task, timeSpent } 
+  const updateTaskTimeSpent = (taskId: string, timeSpent: number) => {
+    setTasks(prevTasks =>
+      prevTasks.map(task =>
+        task.id === taskId
+          ? { ...task, timeSpent }
           : task
       )
     )
   }
   const { timers, startTimer, pauseTimer, resetTimer, formatTime, getCurrentTime } = useTimer(tasks, updateTaskTimeSpent)
 
-  //TODO: FUNCAO PARA CARREGAR TAREFAS JA EXISTENTES
+  /*FUNCAO PARA CARREGAR TAREFAS JA EXISTENTES*/
+  const fillTasks = () => {
+    setLoading(true)
+    TaskService.getAll({}, 0, 10, 'id')
+      .then((response: AxiosResponse<TaskResponse>) => {
+        setTasks(response.data)
+        setNotificationData({
+          text: `${response.data.length} tarefa(s) carregadas com sucesso!`,
+          type: NotificationTypeEnum.SUCCESS
+        })
+        resetNotification()
+      }).catch((error: AxiosError | Error) => {
+        let errorMessage = "Error ao carregar tarefa."
+        if (axios.isAxiosError(error)) {
+          console.error("error: ", {
+            status: error.response?.status,
+            data: error.response?.data,
+          })
+          if (error.response?.data && typeof error.response.data === 'object') {
+            const data = error.response.data as { message?: string }
+            if (data.message) {
+              errorMessage = data.message
+            }
+          }
+        } else {
+          console.error("Error: ", error)
+          if (error.message) {
+            errorMessage = error.message
+          }
+        }
+        setNotificationData({
+          text: errorMessage,
+          type: NotificationTypeEnum.DANGER,
+        })
+      })
+  }
+  useEffect(() => {
+    fillTasks()
+  }, [])
+
+
   //TODO: API EXTERNA PARA INCLUIR BOTAO COM POMODORO
 
   return (
