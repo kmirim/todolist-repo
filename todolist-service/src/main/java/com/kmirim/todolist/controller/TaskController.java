@@ -35,8 +35,13 @@ public class TaskController {
         }
     }
     @PutMapping("/{id}")
-    public Task update(@PathVariable Long id, @RequestBody Task task){
-       return service.update(id, task);
+    public ResponseEntity<Task> update(@PathVariable ("id")Long id, @RequestBody Task task){
+        try{
+            Task updatedTask = service.update(id, task);
+            return ResponseEntity.ok(updatedTask);
+        } catch (TaskNotFoundException e){
+            return ResponseEntity.notFound().build();
+        }
     }
     @GetMapping("/{id}")
     public Task getById(@PathVariable Long id){

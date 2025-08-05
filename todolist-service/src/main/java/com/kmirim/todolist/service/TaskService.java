@@ -36,11 +36,19 @@ public class TaskService {
     }
 
     public Task update(Long id, Task taskAtualizada) {
-        Task task = repository.findById(id).orElseThrow();
-        task.setTitle(taskAtualizada.getTitle());
-        task.setDescription(taskAtualizada.getDescription());
-        task.setDeadLine(taskAtualizada.getDeadLine());
-        task.setStatus(taskAtualizada.getStatus());
+        Task task = repository.findById(id).orElseThrow(() -> new TaskNotFoundException(id));
+        if (taskAtualizada.getTitle() != null) {
+            task.setTitle(taskAtualizada.getTitle());
+        }
+        if (taskAtualizada.getDescription() != null) {
+            task.setDescription(taskAtualizada.getDescription());
+        }
+        if (taskAtualizada.getDeadLine() != null) {
+            task.setDeadLine(taskAtualizada.getDeadLine());
+        }
+        if (taskAtualizada.getStatus() != null) {
+            task.setStatus(taskAtualizada.getStatus());
+        }
         return repository.save(task);
     }
 }

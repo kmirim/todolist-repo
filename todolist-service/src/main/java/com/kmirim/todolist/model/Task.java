@@ -1,9 +1,6 @@
 package com.kmirim.todolist.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -18,14 +15,19 @@ public class Task {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String title;
 
     private String description;
 
-    private Status status;
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "status", nullable = false)
+    private Status status = Status.PENDENTE;
 
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "dead_line")
     private LocalDateTime deadLine;
 }
 
