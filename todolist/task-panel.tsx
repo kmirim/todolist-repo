@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, FormEventHandler, useEffect } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -12,72 +12,29 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Task, validationSchema, formInitialValues,TimerState } from "@/controller"
-import { Field, FieldProps, Form, Formik, FormikHelpers, FormikProps } from 'formik'
-import { NotificationData, NotificationTypeEnum } from "@/interface/notificationData"
+import { Field, FieldProps, Formik, FormikHelpers, FormikProps } from 'formik'
+import { NotificationData, NotificationTypeEnum, getNotificationClasses} from "@/interface/notificationData"
 import { TaskService } from "./instancias-service"
-import { BaseService } from "./service"
 import axios, { AxiosError, AxiosResponse } from 'axios'
 import { Trash2, Plus, Play, Pause, Square, Clock, CheckCircle } from "lucide-react"
-import { Description } from "@radix-ui/react-toast"
-import { headers } from "next/headers"
+import { useTimer } from "./hooks/timer"
+import { TASK_STATUS_COLORS, TASK_STATUS_LABELS} from "./config/uiConfig"
 
-
-const statusColors = {
-  pendente: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
-  "em-andamento": "bg-blue-100 text-blue-800 hover:bg-blue-200",
-  concluida: "bg-green-100 text-green-800 hover:bg-green-200",
-}
-
-const statusLabels = {
-  pendente: "Pendente",
-  "em-andamento": "Em Andamento",
-  concluida: "Concluída",
-}
 
 export default function TaskPanel() {
   const formikRef = useRef<FormikProps<Task>>(null)
-
   const [tasks, setTasks] = useState<Task[]>([])
-  
-  const [notificationData, setNotificationData] = useState<NotificationData | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
-
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [timers, setTimers] = useState<TimerState>({})
+  const [notificationData, setNotificationData] = useState<NotificationData | null>(null)
+  
 
-  useEffect(() => {
-          const interval = setInterval(() => {
-              setTimers((prevTimers) => {
-                  const updatedTimers = { ...prevTimers }
-                  Object.keys(updatedTimers).forEach((taskId) => {
-                      if (updatedTimers[taskId].isRunning) {
-                          updatedTimers[taskId].elapsedTime =
-                              Date.now() - updatedTimers[taskId].startTime + (tasks.find((t) => t.id === taskId)?.timeSpent || 0) * 1000
-                      }
-                  })
-                  return updatedTimers
-              })
-          }, 1000)
-  
-          return () => clearInterval(interval)
-  }, [tasks])
-  
   const resetNotification = () => {
     setTimeout(() => {
-      setNotificationData(() => null)
+        setNotificationData(null)
     }, 6000)
   }
-
-  const getNotificationClasses = (type: NotificationTypeEnum) => {
-    switch (type) {
-      case NotificationTypeEnum.SUCCESS:
-        return 'bg-green-100 border-green-400 text-green-700'
-      case NotificationTypeEnum.DANGER:
-        return 'bg-red-100 border-red-400 text-red-700'
-      default:
-        return 'bg-gray-100 border-gray-400 text-gray-700'
-    }
-  }
+  
   const handleSubmit = (
     values: Task,
     { setSubmitting, resetForm }: FormikHelpers<Task>
@@ -175,66 +132,16 @@ export default function TaskPanel() {
   const handleStatusChange = (taskId: string, newStatus: Task["status"]) => {
     setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, status: newStatus } : task)))
   }
-  const startTimer = (taskId: string) => {
-    const task = tasks.find((t) => t.id === taskId)
-    if (!task) return
-
-    setTimers((prev) => ({
-      ...prev,
-      [taskId]: {
-        isRunning: true,
-        startTime: Date.now(),
-        elapsedTime: (task.timeSpent || 0) * 1000,
-      },
-    }))
+    const updateTaskTimeSpent = (taskId: string, timeSpent: number) => {
+    setTasks(prevTasks => 
+      prevTasks.map(task => 
+        task.id === taskId 
+          ? { ...task, timeSpent } 
+          : task
+      )
+    )
   }
-  const pauseTimer = (taskId: string) => {
-    const timer = timers[taskId]
-    if (!timer) return
-
-    const totalElapsed = Math.floor(timer.elapsedTime / 1000)
-
-    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, timeSpent: totalElapsed } : task)))
-
-    setTimers((prev) => ({
-      ...prev,
-      [taskId]: {
-        ...prev[taskId],
-        isRunning: false,
-      },
-    }))
-  }
-
-  const resetTimer = (taskId: string) => {
-    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, timeSpent: 0 } : task)))
-
-    setTimers((prev) => {
-      const newTimers = { ...prev }
-      delete newTimers[taskId]
-      return newTimers
-    })
-  }
-
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    const secs = seconds % 60
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-    }
-    return `${minutes}:${secs.toString().padStart(2, "0")}`
-  }
-  const getCurrentTime = (taskId: string) => {
-    const task = tasks.find((t) => t.id === taskId)
-    const timer = timers[taskId]
-
-    if (timer?.isRunning) {
-        return Math.floor(timer.elapsedTime / 1000)
-    }
-
-    return task?.timeSpent || 0
-  }
+  const { timers, startTimer, pauseTimer, resetTimer, formatTime, getCurrentTime } = useTimer(tasks, updateTaskTimeSpent)
 
   //TODO: FUNCAO PARA CARREGAR TAREFAS JA EXISTENTES
   //TODO: API EXTERNA PARA INCLUIR BOTAO COM POMODORO
@@ -248,8 +155,8 @@ export default function TaskPanel() {
               {notificationData.type === NotificationTypeEnum.SUCCESS && (
                 <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
               )}
-              {notificationData.type === NotificationTypeEnum.SUCCESS && (
-                <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+              {notificationData.type === NotificationTypeEnum.DANGER && (
+                <CheckCircle className="w-5 h-5 mr-2 text-red-600" />
               )}
               <span className="font-medium">{notificationData.text}</span>
             </div>
@@ -410,7 +317,7 @@ export default function TaskPanel() {
                           onValueChange={(value) => handleStatusChange(task.id, value as Task["status"])}
                         >
                           <SelectTrigger className="w-auto border-none p-0 h-auto">
-                            <Badge className={statusColors[task.status]}>{statusLabels[task.status]}</Badge>
+                            <Badge className={TASK_STATUS_COLORS[task.status]}>{TASK_STATUS_LABELS[task.status]}</Badge>
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="pendente">Pendente</SelectItem>
