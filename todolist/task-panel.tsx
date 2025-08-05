@@ -116,13 +116,21 @@ export default function TaskPanel() {
 
   //TODO: botao de delete
   const handleDelete = (id: string) => {
-    if (!id) {
+    if (!id) 
       return
-    }
+
+    const confirmDelete = window.confirm(
+      `Você confirma o cancelamento dessa tarefa?` 
+    )
+
+    if(!confirmDelete)
+      return
+
     setLoading(true)
     TaskService.remove(id)
       .then(() => {
         setLoading(false)
+        setTasks(prevTasks => prevTasks.filter(task => task.id !== id))
         setNotificationData(() => ({
           text: 'Tarefa removida com sucesso!',
           type: NotificationTypeEnum.SUCCESS,
@@ -217,7 +225,7 @@ export default function TaskPanel() {
 
 
   //TODO: API EXTERNA PARA INCLUIR BOTAO COM POMODORO
-
+  //TODO: UM FILTRO PARA STATUS
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       {notificationData && (
