@@ -169,9 +169,56 @@ export default function TaskPanel() {
 
     return dateObj.toLocaleDateString("pt-BR");
   }
+
+    //TODO: UM FILTRO PARA STATUS
   const handleStatusChange = (taskId: string, newStatus: Task["status"]) => {
-    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, status: newStatus } : task)))
+    setTasks((prev) => 
+    prev.map((task) => 
+      task.id === taskId ? { ...task, status: newStatus } : task
+    ));
+
+    const updateData = {status: newStatus}
+
+    setLoading(true)
+
+    TaskService.update(taskId, updateData)
+    .then((response) => {
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.id === taskId 
+            ? { ...task, ...response.data }
+            : task
+        )
+      );
+      setNotificationData(() => ({
+        text:'Status da tarefa atualizado!',
+        type:NotificationTypeEnum.SUCCESS,
+      }))
+      resetNotification()
+    })
+    .catch((error) => {
+      TaskService.getById(taskId)
+        .then((response: any) => {
+          setTasks(prevTasks => 
+            prevTasks.map(task => 
+              task.id === taskId 
+                ? { ...task, ...response.data }
+                : task
+            )
+          );
+        })
+        setNotificationData(() => ({
+          text: error?.response?.data?.apierror?.message|| 'Status não pode ser atualizado',
+          type: NotificationTypeEnum.DANGER,
+        }))
+        resetNotification();
+    })
+  
+    .finally(() => {
+      setLoading(false)
+    })
   }
+
   const updateTaskTimeSpent = (taskId: string, timeSpent: number) => {
     setTasks(prevTasks =>
       prevTasks.map(task =>
@@ -225,7 +272,8 @@ export default function TaskPanel() {
 
 
   //TODO: API EXTERNA PARA INCLUIR BOTAO COM POMODORO
-  //TODO: UM FILTRO PARA STATUS
+
+  //TODO: ORDENAR POR PRAZO
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       {notificationData && (
