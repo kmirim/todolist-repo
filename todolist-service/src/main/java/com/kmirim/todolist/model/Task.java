@@ -24,7 +24,7 @@ public class Task {
 
     private Status status;
 
-    private LocalDateTime createAt;
+    private LocalDateTime createdAt;
 
     private LocalDateTime deadLine;
 }

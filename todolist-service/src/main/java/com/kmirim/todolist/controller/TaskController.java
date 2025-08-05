@@ -1,7 +1,10 @@
 package com.kmirim.todolist.controller;
 
+import com.kmirim.todolist.exception.TaskNotFoundException;
 import com.kmirim.todolist.model.Task;
 import com.kmirim.todolist.service.TaskService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -23,8 +26,13 @@ public class TaskController {
         return service.save(task);
     }
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id){
-        service.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable("id") Long id){
+        try{
+            service.delete(id);
+            return ResponseEntity.noContent().build();
+        } catch (TaskNotFoundException e){
+            return ResponseEntity.notFound().build();
+        }
     }
     @PutMapping("/{id}")
     public Task update(@PathVariable Long id, @RequestBody Task task){

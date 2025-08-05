@@ -5,6 +5,9 @@ import com.kmirim.todolist.repository.TaskRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.kmirim.todolist.exception.TaskNotFoundException;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,11 +26,12 @@ public class TaskService {
     }
 
     public Task save(Task task) {
-        task.setCreateAt(java.time.LocalDateTime.now());
+        task.setCreatedAt(java.time.LocalDateTime.now());
         return repository.save(task);
     }
-
-    public void delete(Long id) {
+    public void delete(@PathVariable Long id) {
+        if (!repository.existsById(id))
+            throw new TaskNotFoundException(id);
         repository.deleteById(id);
     }
 
