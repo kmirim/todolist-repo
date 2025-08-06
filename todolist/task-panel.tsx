@@ -12,15 +12,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Task, validationSchema, formInitialValues, TimerState } from "@/controller"
-import { ErrorMessage, Field, FieldProps, Formik, FormikHelpers, FormikProps } from 'formik'
+import { Field, FieldProps, Formik, FormikHelpers, FormikProps } from 'formik'
 import { NotificationData, NotificationTypeEnum, getNotificationClasses } from "@/interface/notificationData"
 import { TaskResponse, TaskService } from "./instancias-service"
 import axios, { AxiosError, AxiosResponse } from 'axios'
 import { Trash2, Plus, Play, Pause, Square, Clock, CheckCircle } from "lucide-react"
 import { useTimer } from "./hooks/timer"
 import { TASK_STATUS_COLORS, TASK_STATUS_LABELS } from "./config/uiConfig"
-import { responseCookiesToRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies"
-import { ApiError } from "next/dist/server/api-utils"
 import TaskFilter from '@/task-filter'
 import { filterTasks } from '@/filter-utils'
 
@@ -35,12 +33,12 @@ export default function TaskPanel() {
 
 
   const handleFilterChange = (filters: FilterOptions) => {
-  const filtered = filterTasks(tasks, filters)
-  setFilteredTasks(filtered)
-}
-const handleClearFilters = () => {
-  setFilteredTasks(tasks)
-}
+    const filtered = filterTasks(tasks, filters)
+    setFilteredTasks(filtered)
+  }
+  const handleClearFilters = () => {
+    setFilteredTasks(tasks)
+  }
   const resetNotification = () => {
     setTimeout(() => {
       setNotificationData(null)
@@ -72,7 +70,6 @@ const handleClearFilters = () => {
     setSubmitting(false)
     resetForm()
     handleCreatTask(formToSend);
-
   }
   const handleCreatTask = (formToSend: Partial<Task>) => {
     setLoading(true);
@@ -98,42 +95,33 @@ const handleClearFilters = () => {
       })
       .catch((error: AxiosError | Error) => {
         let errorMessage = "Erro ao criar tarefa"
+        
         if (axios.isAxiosError(error)) {
-          console.error("❌ Response do erro:", {
-            status: error.response?.status,
-            data: error.response?.data,
-            headers: error.response?.headers,
-          });
-          if (error.response?.data && typeof error.response.data === 'object') {
-            const data = error.response.data as { message?: string };
-            if (data.message) {
-              errorMessage = data.message;
-            }
-          }
+          console.error("❌ Erro na API:", error.response?.status, error.response?.data)
+          errorMessage = error.response?.data?.message || errorMessage
         } else {
-          console.error("Erro: ", error);
-          if (error.message) {
-            errorMessage = error.message;
-          }
+          console.error("❌ Erro:", error.message)
+          errorMessage = error.message || errorMessage
         }
+        
         setNotificationData({
           text: errorMessage,
           type: NotificationTypeEnum.DANGER,
-        });
+        })
         resetNotification()
       })
   }
 
   //TODO: botao de delete
   const handleDelete = (id: string) => {
-    if (!id) 
+    if (!id)
       return
 
     const confirmDelete = window.confirm(
-      `Você confirma o cancelamento dessa tarefa?` 
+      `Você confirma o cancelamento dessa tarefa?`
     )
 
-    if(!confirmDelete)
+    if (!confirmDelete)
       return
 
     setLoading(true)
@@ -147,27 +135,25 @@ const handleClearFilters = () => {
         }))
         resetNotification()
       })
-          .catch((error: unknown) => {
-      setLoading(false);
+      .catch((error) => {
+        setLoading(false);
 
-      let errorMessage = 'Erro ao remover tarefa!';
+        let errorMessage = 'Erro ao remover tarefa';
 
-      if (error instanceof AxiosError) {
-        const apiError = error.response?.data?.apierror?.message;
-        if (apiError) {
-          errorMessage += `: ${apiError}`;
+        if (axios.isAxiosError(error)) {
+          const apiError = error.response?.data?.apierror?.message;
+          if (apiError) {
+            errorMessage += `: ${apiError}`;
+          }
+        } else if (error instanceof Error) {
+          errorMessage += `: ${error.message}`;
         }
-      } else if (error instanceof Error) {
-        errorMessage += `: ${error.message}`;
-      }
-      console.error("valor do id ", id)
-      console.error("error -> ", ApiError)
-      setNotificationData(() => ({
-        text: errorMessage,
-        type: NotificationTypeEnum.DANGER,
-      }));
-      resetNotification();
-    });
+        setNotificationData(() => ({
+          text: errorMessage,
+          type: NotificationTypeEnum.DANGER,
+        }));
+        resetNotification();
+      });
   }
 
   const formatDate = (date: Date | null | string) => {
@@ -180,53 +166,53 @@ const handleClearFilters = () => {
     return dateObj.toLocaleDateString("pt-BR");
   }
 
-    //TODO: UM FILTRO PARA STATUS
-  const handleStatusChange = (taskId: string, newStatus: Task["status"]) => {
-    setTasks((prev) => 
-    prev.map((task) => 
-      task.id === taskId ? { ...task, status: newStatus } : task
-    ));
+  //TODO: UM FILTRO PARA STATUS
 
-    const updateData = {status: newStatus}
+  /*alterar status */
+  const handleStatusChange = (taskId: string, newStatus: Task["status"]) => {
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId ? { ...task, status: newStatus } : task
+      ));
+
+    const updateData = { status: newStatus }
 
     setLoading(true)
 
     TaskService.update(taskId, updateData)
-    .then((response) => {
-      setTasks(prevTasks => 
-        prevTasks.map(task => 
-          task.id === taskId 
-            ? { ...task, ...response.data }
-            : task
-        )
-      );
-      setNotificationData(() => ({
-        text:'Status da tarefa atualizado!',
-        type:NotificationTypeEnum.SUCCESS,
-      }))
-      resetNotification()
-    })
-    .catch((error) => {
-      TaskService.getById(taskId)
-        .then((response: any) => {
-          setTasks(prevTasks => 
-            prevTasks.map(task => 
-              task.id === taskId 
-                ? { ...task, ...response.data }
-                : task
-            )
-          );
-        })
+      .then((response) => {
+        setTasks(prevTasks =>
+          prevTasks.map(task =>
+            task.id === taskId
+              ? { ...task, ...response.data }
+              : task
+          )
+        );
         setNotificationData(() => ({
-          text: error?.response?.data?.apierror?.message|| 'Status não pode ser atualizado',
+          text: 'Status da tarefa atualizado!',
+          type: NotificationTypeEnum.SUCCESS,
+        }))
+        resetNotification()
+      })
+      .catch((error) => {
+        setTasks(prevTasks =>
+          prevTasks.map(task =>
+            task.id === taskId
+              ? { ...task, status:task.status }
+              : task
+          )
+        );
+  
+        setNotificationData(() => ({
+          text: error?.response?.data?.apierror?.message || 'Status não pode ser atualizado',
           type: NotificationTypeEnum.DANGER,
         }))
         resetNotification();
-    })
-  
-    .finally(() => {
-      setLoading(false)
-    })
+      })
+
+      .finally(() => {
+        setLoading(false)
+      })
   }
 
   const updateTaskTimeSpent = (taskId: string, timeSpent: number) => {
@@ -286,10 +272,10 @@ const handleClearFilters = () => {
   //TODO: ORDENAR POR PRAZO
   return (
     <div className="container mx-auto p-6 max-w-7xl">
-      <TaskFilter 
-  onFilterChange={handleFilterChange}
-  onClearFilters={handleClearFilters}
-/>
+      <TaskFilter
+        onFilterChange={handleFilterChange}
+        onClearFilters={handleClearFilters}
+      />
       {notificationData && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm border-l-4 ${getNotificationClasses(notificationData.type)} animate-in slide-in-from-right-full duration-300`}>
           <div className="flex justify-between items-start">
