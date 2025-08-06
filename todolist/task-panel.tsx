@@ -76,7 +76,6 @@ export default function TaskPanel() {
 
     TaskService.create(formToSend)
       .then((response: any) => {
-        try {
           setTasks((prev) => [...prev, response.data])
           setNotificationData({
             text: 'Tarefa criada com sucesso!',
@@ -84,14 +83,6 @@ export default function TaskPanel() {
           })
           resetNotification()
           setIsModalOpen(false)
-        } catch (error) {
-          console.error("❌ Erro interno após sucesso da API:", error)
-          setNotificationData({
-            text: 'Tarefa criada, mas houve um erro!',
-            type: NotificationTypeEnum.WARNING,
-          })
-          resetNotification()
-        }
       })
       .catch((error: AxiosError | Error) => {
         let errorMessage = "Erro ao criar tarefa"
