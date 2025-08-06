@@ -21,6 +21,8 @@ import { useTimer } from "./hooks/timer"
 import { TASK_STATUS_COLORS, TASK_STATUS_LABELS } from "./config/uiConfig"
 import { responseCookiesToRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies"
 import { ApiError } from "next/dist/server/api-utils"
+import TaskFilter from '@/task-filter'
+import { filterTasks } from '@/filter-utils'
 
 
 export default function TaskPanel() {
@@ -29,8 +31,16 @@ export default function TaskPanel() {
   const [loading, setLoading] = useState<boolean>(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [notificationData, setNotificationData] = useState<NotificationData | null>(null)
+  const [filteredTasks, setFilteredTasks] = useState(tasks)
 
 
+  const handleFilterChange = (filters: FilterOptions) => {
+  const filtered = filterTasks(tasks, filters)
+  setFilteredTasks(filtered)
+}
+const handleClearFilters = () => {
+  setFilteredTasks(tasks)
+}
   const resetNotification = () => {
     setTimeout(() => {
       setNotificationData(null)
@@ -80,7 +90,7 @@ export default function TaskPanel() {
         } catch (error) {
           console.error("❌ Erro interno após sucesso da API:", error)
           setNotificationData({
-            text: 'Tarefa criada, mas houve um erro na interface!',
+            text: 'Tarefa criada, mas houve um erro!',
             type: NotificationTypeEnum.WARNING,
           })
           resetNotification()
@@ -276,6 +286,10 @@ export default function TaskPanel() {
   //TODO: ORDENAR POR PRAZO
   return (
     <div className="container mx-auto p-6 max-w-7xl">
+      <TaskFilter 
+  onFilterChange={handleFilterChange}
+  onClearFilters={handleClearFilters}
+/>
       {notificationData && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm border-l-4 ${getNotificationClasses(notificationData.type)} animate-in slide-in-from-right-full duration-300`}>
           <div className="flex justify-between items-start">
