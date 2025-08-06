@@ -20,9 +20,9 @@ public class Task {
 
     private String description;
 
-    @Enumerated(EnumType.ORDINAL)
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private Status status = Status.PENDENTE;
+    private Status status;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
