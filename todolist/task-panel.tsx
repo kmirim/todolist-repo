@@ -94,7 +94,6 @@ export default function TaskPanel() {
           console.error("❌ Erro:", error.message)
           errorMessage = error.message || errorMessage
         }
-        
         setNotificationData({
           text: errorMessage,
           type: NotificationTypeEnum.DANGER,
@@ -103,7 +102,7 @@ export default function TaskPanel() {
       })
   }
 
-  //TODO: botao de delete
+  /*funcao para deletar */
   const handleDelete = (id: string) => {
     if (!id)
       return
