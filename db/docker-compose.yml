@@ -4,13 +4,13 @@ services:
     image: postgres
     restart: always
     environment:
-      POSTGRES_PASSWORD: example
-      POSTGRES_DB: todolist_db  # Nome do banco
-      POSTGRES_USER: postgres   # Usuário padrão
+      POSTGRES_PASSWORD:
+      POSTGRES_DB: 
+      POSTGRES_USER:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data  # Persistir dados
+      - postgres_data:/var/lib/postgresql/data
   
   adminer:
     image: adminer
