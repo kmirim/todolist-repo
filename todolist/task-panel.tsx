@@ -262,10 +262,7 @@ export default function TaskPanel() {
   //TODO: ORDENAR POR PRAZO
   return (
     <div className="container mx-auto p-6 max-w-7xl">
-      <TaskFilter
-        onFilterChange={handleFilterChange}
-        onClearFilters={handleClearFilters}
-      />
+    
       {notificationData && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm border-l-4 ${getNotificationClasses(notificationData.type)} animate-in slide-in-from-right-full duration-300`}>
           <div className="flex justify-between items-start">
@@ -388,6 +385,10 @@ export default function TaskPanel() {
           </DialogContent>
         </Dialog>
       </div>
+      <TaskFilter
+        onFilterChange={handleFilterChange}
+        onClearFilters={handleClearFilters}
+      />
 
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="p-6">
