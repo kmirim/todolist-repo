@@ -1,5 +1,6 @@
 package com.kmirim.todolist.service;
 
+import com.kmirim.todolist.model.Status;
 import com.kmirim.todolist.model.Task;
 import com.kmirim.todolist.repository.TaskRepository;
 import lombok.AllArgsConstructor;
@@ -17,14 +18,19 @@ import java.util.Optional;
 public class TaskService {
     private final TaskRepository repository;
 
-    public List<Task> findAll() {
-        return repository.findAll();
+    public List<Task> findAllWithFilters(String status){
+        if(status == null || status.isBlank() || status.equalsIgnoreCase("all"))
+            return repository.findAll();
+        try{
+            Status statusEnum = Status.fromString(status);
+            return repository.findAllWithFilters(statusEnum);
+        } catch(IllegalArgumentException ex) {
+            return repository.findAll();
+        }
     }
-
     public Optional<Task> findById(Long id) {
         return repository.findById(id);
     }
-
     public Task save(Task task) {
         task.setCreatedAt(java.time.LocalDateTime.now());
         return repository.save(task);
@@ -34,7 +40,6 @@ public class TaskService {
             throw new TaskNotFoundException(id);
         repository.deleteById(id);
     }
-
     public Task update(Long id, Task taskAtualizada) {
         Task task = repository.findById(id).orElseThrow(() -> new TaskNotFoundException(id));
         if (taskAtualizada.getTitle() != null) {

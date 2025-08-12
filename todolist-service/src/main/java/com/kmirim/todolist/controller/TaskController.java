@@ -17,9 +17,20 @@ public class TaskController {
     public TaskController(TaskService service){
         this.service = service;
     }
+    @GetMapping("/{id}")
+    public Task getById(@PathVariable Long id){
+        return service.findById(id).orElseThrow();
+    }
     @GetMapping
-    public List<Task> all(){
-        return service.findAll();
+    public List<Task>all(
+        @RequestParam(name = "status", required = false) String status,
+        @RequestParam(name = "title", required = false) String title,
+        @RequestParam(name = "description", required = false) String description,
+        @RequestParam(name = "deadline_filter", required = false) String deadLineFilter,
+        @RequestParam(name = "date_from", required = false) String dateFrom, 
+        @RequestParam(name = "date_to", required = false) String dateTo
+    ) {
+        return service.findAllWithFilters(status);
     }
     @PostMapping
     public Task create(@RequestBody Task task){
@@ -42,9 +53,5 @@ public class TaskController {
         } catch (TaskNotFoundException e){
             return ResponseEntity.notFound().build();
         }
-    }
-    @GetMapping("/{id}")
-    public Task getById(@PathVariable Long id){
-        return service.findById(id).orElseThrow();
     }
 }
