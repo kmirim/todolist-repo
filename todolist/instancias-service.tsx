@@ -39,16 +39,17 @@ export const TaskService = {
         size: number,
         sort: string,
     ): Promise<AxiosResponse<TaskResponse>> {
-        const queryParams = Object.keys(filters)
-        .filter(key => filters[key as keyof TaskFilters] !== undefined)
-        .map((key: string) => `${key}=${encodeURIComponent(filters[key as keyof TaskFilters] as string)}`)
-        .join("&")
-
-        return baseService.get(
-            `/api/task?page=${page}&size=${size}&sort=${sort},desc&${
-                queryParams ? `&${queryParams}` : ""
-            }`
-        )
+        const queryParams = new URLSearchParams()
+        
+        queryParams.append('page', page.toString())
+        queryParams.append('size', size.toString())
+        queryParams.append('sort', `${sort},desc`)
+        
+        if (filters.status && filters.status !== 'all') {
+            queryParams.append('status', filters.status)
+        }
+        
+        return baseService.get(`/api/task?${queryParams.toString()}`)
     },
 
     create(request: Partial<Task>): Promise<AxiosResponse<Task>> {
@@ -68,4 +69,3 @@ export const TaskService = {
         return baseService.delete(`/api/task/${id}`)
     }
 }
-

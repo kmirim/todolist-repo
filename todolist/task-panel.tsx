@@ -20,7 +20,7 @@ import { Trash2, Plus, Play, Pause, Square, Clock, CheckCircle } from "lucide-re
 import { useTimer } from "./hooks/timer"
 import { TASK_STATUS_COLORS, TASK_STATUS_LABELS } from "./config/uiConfig"
 import TaskFilter from '@/task-filter'
-import { filterTasks } from '@/filter-utils'
+import { FilterOptions, filterTasks } from '@/filter-utils'
 
 
 export default function TaskPanel() {
@@ -30,14 +30,30 @@ export default function TaskPanel() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [notificationData, setNotificationData] = useState<NotificationData | null>(null)
   const [filteredTasks, setFilteredTasks] = useState(tasks)
-
-
+  const [currentFilters, setCurrentFilters] = useState<FilterOptions>({
+    status: "all",
+    deadlineFilter: "all", 
+    dateFrom: "",
+    dateTo: ""
+  })
+  
+  // Usar tasks diretamente do backend (sem filtro client-side)
   const handleFilterChange = (filters: FilterOptions) => {
-    const filtered = filterTasks(tasks, filters)
-    setFilteredTasks(filtered)
+    setCurrentFilters(filters)
+    // Recarregar tarefas com filtros do backend
+    fillTasks(filters.status !== "all" ? filters.status : undefined)
   }
+  
   const handleClearFilters = () => {
-    setFilteredTasks(tasks)
+    const clearedFilters = {
+      status: "all",
+      deadlineFilter: "all",
+      dateFrom: "",
+      dateTo: ""
+    }
+    setCurrentFilters(clearedFilters)
+    // Recarregar todas as tarefas
+    fillTasks()
   }
   const resetNotification = () => {
     setTimeout(() => {
@@ -217,9 +233,14 @@ export default function TaskPanel() {
   const { timers, startTimer, pauseTimer, resetTimer, formatTime, getCurrentTime } = useTimer(tasks, updateTaskTimeSpent)
 
   /*FUNCAO PARA CARREGAR TAREFAS JA EXISTENTES*/
-  const fillTasks = () => {
+  const fillTasks = (statusFilter?: string) => {
     setLoading(true)
-    TaskService.getAll({}, 0, 10, 'id')
+    // TaskService.getAll({}, 0, 10, 'id')
+    const filters: any ={ }
+    if(statusFilter && statusFilter !== 'all'){
+      filters.status = statusFilter
+    }
+    TaskService.getAll(filters, 0, 10, 'id')
       .then((response: AxiosResponse<TaskResponse>) => {
         setTasks(response.data)
         setNotificationData({

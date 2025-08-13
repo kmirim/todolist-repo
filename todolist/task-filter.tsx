@@ -39,8 +39,8 @@ export default function TaskFilter({ onFilterChange, onClearFilters }: TaskFilte
 
     const handleClearFilters = () => {
         const clearedFilters = {
-            status: "todos",
-            deadlineFilter: "todos",
+            status: "all",
+            deadlineFilter: "all",
             dateFrom: "",
             dateTo: "",
         }
@@ -49,8 +49,8 @@ export default function TaskFilter({ onFilterChange, onClearFilters }: TaskFilte
     }
 
     const hasActiveFilters =
-        filters.status !== "todos" ||
-        filters.deadlineFilter !== "todos" ||
+        filters.status !== "all" ||
+        filters.deadlineFilter !== "all" ||
         filters.dateFrom !== "" ||
         filters.dateTo !== ""
 
@@ -105,7 +105,7 @@ export default function TaskFilter({ onFilterChange, onClearFilters }: TaskFilte
                                 <SelectValue placeholder="Selecione o status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="todos">Todos os Status</SelectItem>
+                                <SelectItem value="all">Todos os Status</SelectItem>
                                 <SelectItem value="pendente">Pendente</SelectItem>
                                 <SelectItem value="em-andamento">Em Andamento</SelectItem>
                                 <SelectItem value="concluida">Concluída</SelectItem>
