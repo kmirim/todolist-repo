@@ -4,10 +4,8 @@ import com.kmirim.todolist.model.Status;
 import com.kmirim.todolist.model.Task;
 import com.kmirim.todolist.repository.TaskRepository;
 import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.kmirim.todolist.exception.TaskNotFoundException;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
